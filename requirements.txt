@@ -2,3 +2,5 @@ pandas
 joblib
 streamlit
 scikit-learn
+python-dotenv
+google-generativeai
