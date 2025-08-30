@@ -1,14 +1,19 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 
-# === Load model ===
+# === Load env dan model ===
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = joblib.load("random_forest_maternal.pkl")
+llm_model = genai.GenerativeModel("gemini-2.0-flash")
 
 st.title("Maternal Health Risk Prediction App")
-st.write("Masukkan data berikut untuk memprediksi risiko maternal:")
 
-# === Layout 2 kolom ===
+# === Input user (2 kolom) ===
 col1, col2 = st.columns(2)
 
 with col1:
@@ -18,16 +23,14 @@ with col1:
 
 with col2:
     bs = st.number_input("Blood Sugar (BS)", min_value=1.0, max_value=30.0, value=7.0, step=0.1)
-    # User input dalam Celsius
     bodytemp_c = st.number_input("Body Temperature (°C)", min_value=35.0, max_value=42.0, value=36.7, step=0.1)
     heartrate = st.number_input("Heart Rate", min_value=40, max_value=200, value=80)
 
-# Convert ke Fahrenheit untuk model
+# Convert suhu ke Fahrenheit (untuk model)
 bodytemp_f = bodytemp_c * 9/5 + 32
 
-# === Tombol Prediksi ===
+# --- Prediksi ---
 if st.button("Predict"):
-    # Buat dataframe dari input user (pakai Fahrenheit untuk model)
     sample = pd.DataFrame([{
         "Age": age,
         "SystolicBP": systolic,
@@ -36,16 +39,45 @@ if st.button("Predict"):
         "BodyTemp": bodytemp_f,
         "HeartRate": heartrate
     }])
-
-    # Prediksi
     pred = model.predict(sample)[0]
     prob = model.predict_proba(sample)[0]
-
     label = "High Risk" if pred == 1 else "Low Risk"
 
-    # Tampilkan hasil
     st.subheader("Hasil Prediksi:")
     if label == "High Risk":
-        st.error(f"⚠️ {label} (Prob: {prob[1]:.2f})")
+        st.error(f"⚠️ {label}")
     else:
-        st.success(f"✅ {label} (Prob: {prob[0]:.2f})")
+        st.success(f"✅ {label}")
+
+    # === Simpan hasil prediksi ke session_state ===
+    st.session_state["last_label"] = label
+    st.session_state["last_input"] = {
+        "age": age,
+        "systolic": systolic,
+        "diastolic": diastolic,
+        "bs": bs,
+        "bodytemp_c": bodytemp_c,
+        "heartrate": heartrate,
+    }
+
+# --- Rekomendasi ---
+if "last_label" in st.session_state:
+    if st.button("Rekomendasi"):
+        with st.spinner("🔄 Sedang menyiapkan rekomendasi..."):
+            user_input = st.session_state["last_input"]
+            label = st.session_state["last_label"]
+
+            prompt = f"""
+            Berikan satu rekomendasi singkat (1 paragraf) untuk ibu hamil dengan kondisi:
+            Age: {user_input['age']}, Systolic BP: {user_input['systolic']}, 
+            Diastolic BP: {user_input['diastolic']}, Blood Sugar: {user_input['bs']}, 
+            Body Temperature: {user_input['bodytemp_c']:.1f} °C, Heart Rate: {user_input['heartrate']}.
+            Risiko yang terdeteksi: {label}.
+            Saran harus singkat, jelas, dan praktis.
+            """
+            try:
+                response = llm_model.generate_content(prompt)
+                st.info(response.text)
+            except Exception as e:
+                st.error("❌ Gagal mendapatkan rekomendasi dari Gemini.")
+                st.caption(str(e))
