@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 # === Load env dan model ===
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("AIzaSyACf08giqxeYLtYCZyicy9zKMHLkZFw2Ys"))
 model = joblib.load("random_forest_maternal.pkl")
 llm_model = genai.GenerativeModel("gemini-2.0-flash")
 
