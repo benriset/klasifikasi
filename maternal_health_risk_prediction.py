@@ -43,13 +43,7 @@ if st.button("Predict"):
     prob = model.predict_proba(sample)[0]
     label = "High Risk" if pred == 1 else "Low Risk"
 
-    st.subheader("Hasil Prediksi:")
-    if label == "High Risk":
-        st.error(f"⚠️ {label}")
-    else:
-        st.success(f"✅ {label}")
-
-    # === Simpan hasil prediksi ke session_state ===
+    # Simpan hasil prediksi ke session_state
     st.session_state["last_label"] = label
     st.session_state["last_input"] = {
         "age": age,
@@ -60,15 +54,22 @@ if st.button("Predict"):
         "heartrate": heartrate,
     }
 
-# --- Rekomendasi ---
+# --- Selalu tampilkan hasil prediksi terakhir jika ada ---
 if "last_label" in st.session_state:
+    st.subheader("Hasil Prediksi (terakhir):")
+    if st.session_state["last_label"] == "High Risk":
+        st.error(f"⚠️ {st.session_state['last_label']}")
+    else:
+        st.success(f"✅ {st.session_state['last_label']}")
+
+    # --- Rekomendasi ---
     if st.button("Rekomendasi"):
         with st.spinner("🔄 Sedang menyiapkan rekomendasi..."):
             user_input = st.session_state["last_input"]
             label = st.session_state["last_label"]
 
             prompt = f"""
-            Berikan satu rekomendasi singkat (1 paragraf) untuk ibu hamil dengan kondisi:
+            Berikan satu rekomendasi singkat (1 paragraf) untuk ibu dengan kondisi:
             Age: {user_input['age']}, Systolic BP: {user_input['systolic']}, 
             Diastolic BP: {user_input['diastolic']}, Blood Sugar: {user_input['bs']}, 
             Body Temperature: {user_input['bodytemp_c']:.1f} °C, Heart Rate: {user_input['heartrate']}.
